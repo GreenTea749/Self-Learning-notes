@@ -156,7 +156,11 @@ Enables communication between your browser/curl and the container
 ## 📦 Docker Compose
 
 Used for defining and running multi-container applications (e.g., web + database) using a `docker-compose.yml` file.
+- Instead of weriting docker run commands and managing many containers
+- define everything inside a YAML file **docker-compose.yml**
+- avoids writing long `docker run` commands and handles orchestration, networks, and volumes easily.
 
+  
 ---
 
 ### 📝 Example `docker-compose.yml`
@@ -175,4 +179,116 @@ services:
     volumes:
       - ./data:/app/data
     restart: always
+```
+## **services**
+- each key under services: defines a container
+- either build from Dockerfile (build:)
+- or from Docker Hub or another registry (image:)
+- Can be defined by either
+  - build: from a Dockerfile in current directory
+  - image: <name> pull from docker hub or a custom registry
 
+  ## **ports**
+  - eg 8000: 1234
+  - expose internal container ports to external host machine
+  - allow host to access the app
+  - map machine port (8000) to container (1234)
+
+
+  ## **volume**
+
+  2 types:
+  ### Bind mount
+  ```yaml
+  volumes:
+  - ./data:/app/data
+  ```
+   - sync host folder (./data) with container path (/app/data)
+   - basically allow the container to contain the data from that host folder
+
+### Named volumes (persistant, managed by Docker)
+```yaml
+volumes:
+- esdata01:/usr/share/elasticsearch/data
+```
+- persists data even when container is deleted
+- Declared under top-level volumes
+ 
+  ## **environment**
+  - sets envrionment variables in the container
+  ```yaml
+  environment:
+  - DEBUG=true
+  - MODEL_PATH=/app/models
+  - PYTHONUNBUFFERED=1
+  ```
+  - can be accessed in python using os.environ['KEY']
+  - can use .env files instead for cleaner management
+    
+  ## **communication in compose**
+  - all services in the same yaml file are placed in an **default isolated bridge network**
+  - can talk to one another using service names
+  - no need to expose internal ports
+  - If no have ports: , the container can only be reached **internally** by other containers
+
+  ## **restart**
+  - sets the container restarts policy:
+  - no: default, do not restart
+  - always: always restart the container
+  - on-failure: restart only if the container exits with error
+  - unless-stopped: restart unless explicitly stopped
+ 
+  ## **depends_on:
+  - specifies startup condition and order:
+  ```yaml
+  depends_on:
+  es01:
+    condition: service_healthy
+  ```
+  - condition: service_healhy waits for target's health check to pass
+  - usefull for dependent services such as indexers and web app
+ 
+  ## **healthcheck**:
+  - let docker monitor the health of a container:
+  ```yaml
+  healthcheck:
+  test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+  interval: 20s
+  timeout: 5s
+  retries: 10
+  ```
+  - runs periodic checks on the container
+  - mark as unealthy if test fails *retries* number of times
+  - required for the *depends_on* conditon
+ 
+  ## **networks**
+  - controls how containers communicate with each other
+  - by default, Compose creates a bridge network
+  - all containers in this same file share this network
+  - containers can reach each other via their service names, so no need for EXPOSe to access between containers
+ 
+  ## **Common commands**
+  1) build and start all containers (rebuild if it is needed)
+  ```bash
+  docker compose up --build
+  ```
+  2) stop and remove all containers
+  ```bash
+  docker compose down
+  3) check running services
+  ```bash
+  docker compose ps
+  ```
+  4) rebuild image without restarting
+  ```bash
+  docker compose build
+  ```
+  5) execute command inside the container
+  ```bash
+  docker compose exec ___ ____
+  ```
+  6) restart a specific service only
+  ``` bash
+  docker compose restart asr
+  ```
+  
